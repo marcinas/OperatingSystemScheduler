@@ -13,13 +13,6 @@ static word CODE_TYPE[(LAST_PAIR*2)+1][CALL_NUMBER] = { {0,0,0,0,0,0},
     /* mutual_b */ { CODE_LOCK+1, CODE_LOCK+0, CODE_WRITE+0, CODE_WRITE+1, CODE_UNLOCK+0, CODE_UNLOCK+1 },
 };       
 
-static int PRIORITIES[] = {PRIORITY_0_CHANCE, PRIORITY_1_CHANCE,
-                           PRIORITY_2_CHANCE, PRIORITY_3_CHANCE,
-                           PRIORITY_OTHER_CHANCE};
-static int MAX_TYPES[] = {CPU_ONLY_MAX + IO_ONLY_MAX, PROCON_PAIR_MAX,
-                          MUTUAL_PAIR_MAX};
-static int MAX_IOCPU[] = {CPU_ONLY_MAX, IO_ONLY_MAX};
-
 static int type_count[] = {0, 0, 0, 0, 0};
 static int io_count[] = {0, 0};
 

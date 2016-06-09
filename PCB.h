@@ -83,13 +83,6 @@ static char *STATE[] = {"created    ", "ready      ", "running    ", "waiting   
 static char *TYPE[] = {"regular  ", "producer ", "mutual_A ",
                        "consumer ", "mutual_B ", "undefined"};
 
-static word CODE_TYPE[(LAST_PAIR*2)+1][CALL_NUMBER] = { {0,0,0,0,0,0},
-    /* producer */ { CODE_LOCK+0, CODE_WAIT_F+0, CODE_WRITE+0, CODE_FLAG+0, CODE_SIGNAL+0, CODE_UNLOCK+0 },
-    /* mutual_a */ { CODE_LOCK+0, CODE_LOCK+1, CODE_WRITE+0, CODE_WRITE+1, CODE_UNLOCK+1, CODE_UNLOCK+0 },
-    /* consumer */ { CODE_LOCK+0, CODE_WAIT_T+0, CODE_READ+0, CODE_FLAG+0, CODE_SIGNAL+0, CODE_UNLOCK+0 },
-    /* mutual_b */ { CODE_LOCK+1, CODE_LOCK+0, CODE_WRITE+0, CODE_WRITE+1, CODE_UNLOCK+0, CODE_UNLOCK+1 },
-};       
-
 static int PRIORITIES[] = {PRIORITY_0_CHANCE, PRIORITY_1_CHANCE,
                            PRIORITY_2_CHANCE, PRIORITY_3_CHANCE,
                            PRIORITY_OTHER_CHANCE};
@@ -97,21 +90,9 @@ static int MAX_TYPES[] = {CPU_ONLY_MAX + IO_ONLY_MAX, PROCON_PAIR_MAX,
                           MUTUAL_PAIR_MAX};
 static int MAX_IOCPU[] = {CPU_ONLY_MAX, IO_ONLY_MAX};
 
-enum state_type {
-    created = 0,
-    ready,
-    running,
-    waiting,
-    interrupted,
-    blocked,
-    terminated,
-    nostate
-};
+enum state_type { created = 0, ready, running, waiting, interrupted, blocked, terminated, nostate };
 
-enum process_type
-{
-    regular = 0, producer, mutual_A, consumer, mutual_B, undefined
-};
+enum process_type { regular = 0, producer, mutual_A, consumer, mutual_B, undefined };
 
 
 //typedef struct pcb PCB;
@@ -121,16 +102,16 @@ typedef struct CPU *CPU_p;
 typedef union regfile REG;
 typedef REG *REG_p;
 
-struct PCB
-{
+struct PCB {
+    //System Stack information
     REG_p regs;
+    
     //separate from sysStack--don't push/pop
     word pid;        // process ID #, a unique number
     bool io;               // io or cpu intensive
     enum process_type type;   // thread relation to other processes
     unsigned short priority;  // priorities 0=highest, LOWEST_PRIORITY=lowest
     unsigned short orig_priority;
-    // og priority
     enum state_type state;    // process state (running, waiting, etc.)
     word timeCreate;
     word timeTerminate;
@@ -139,17 +120,13 @@ struct PCB
     word group;
     word queues;
     bool promoted;
-//    THREADQp buddies;
     bool terminate;
 };
 
-union regfile
-{
+union regfile {
     //save to PCB from system
-    struct
-    {
-        word pc, MAX_PC, sw, term_count, TERMINATE, IO_TRAPS[IO_NUMBER][IO_CALLS], CALLS[CALL_NUMBER], CODES[CALL_NUMBER];
-    } reg;
+    struct { word pc, MAX_PC, sw, term_count, TERMINATE, IO_TRAPS[IO_NUMBER][IO_CALLS], CALLS[CALL_NUMBER], CODES[CALL_NUMBER];
+    }    reg;
     word gpu[REGNUM];
 };
 
@@ -162,7 +139,7 @@ int     PCBs_available      ();
 int 	PCB_setPid          (PCB_p this, word pid); 
 word 	PCB_getPid          (PCB_p this, int *ptr_error);
 int 	PCB_setState        (PCB_p this, enum state_type state); 
-enum state_type PCB_getState(PCB_p this, int *ptr_error);
+enum    state_type PCB_getState(PCB_p this, int *ptr_error);
 int 	PCB_setPriority     (PCB_p this, unsigned short priority); 
 unsigned short 	PCB_getPriority (PCB_p this, int *ptr_error);
 int 	PCB_setPc           (PCB_p this, word pc); 
