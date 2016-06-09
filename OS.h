@@ -26,9 +26,10 @@
 #define THREAD_DEBUG false
 #define STACK_DEBUG false
 #define CREATEPCB_DEBUG false
-#define MUTEX_DEBUG true
+#define MUTEX_DEBUG false
 #define EXIT_STATUS_MESSAGE true
-#define OUTPUT false
+#define CLEANUP_MESSAGE false
+#define OUTPUT true
 #define OUTPUT_CONTEXT_SWITCH 1
 #define FIRST_IO 1
 
@@ -54,7 +55,7 @@
 #define INTERRUPT_IOCOMPLETE 4444
 
 //SYSTEM DETAILS
-#define SHUTDOWN 300000
+#define SHUTDOWN 100000
 #define TIME_QUANTUM 300
 #define TIMER_SLEEP (TIME_QUANTUM * 1000)
 #define IO_MAX_SLEEP (TIME_QUANTUM * 2000)

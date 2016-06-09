@@ -1089,7 +1089,10 @@ void awakeStarvationDaemon(int *error)
     for (g = 1; g <= MAX_SHARED_RESOURCES; g++) {
         for (r = 0; r < MUTUAL_MAX_RESOURCES; r++) {
             temp = FIFOq_peek(group[g]->fmutex[r], error);
-            if (temp != NULL && temp != current && temp->state == blocked) {
+            if (temp != NULL && temp != current && temp->state == blocked &&
+                temp != FIFOq_peek(group[g]->fmutex[!r], error) &&
+                FIFOq_peek(group[g]->fmutex[!r], error) != NULL && 
+                temp != group[g]->fmutex[!r]->head->next_node->data) {
                 temp->state = ready;
                 FIFOq_enqueuePCB(readyQ[temp->priority], temp, error);
             }
@@ -1468,14 +1471,14 @@ void queueCleanup(FIFOq_p queue, char *qstr, int *error)
     int stz = FIFOQ_TOSTRING_MAX;
     char str[stz];
 
-    if (EXIT_STATUS_MESSAGE) {
+    if (CLEANUP_MESSAGE) {
         printf("\n>%s deallocating...\n", qstr);
         printf(">FIFO Queue %s", FIFOq_toString(queue, str, &stz, error));
     }
 
     if (queue->size) {
-        printf("size: %d\n", queue->size);
-        if (EXIT_STATUS_MESSAGE) {
+        if (DEBUG) printf("size: %d\n", queue->size);
+        if (CLEANUP_MESSAGE) {
             printf(">System exited with non-empty %s\n", qstr);
         }
         while (!FIFOq_is_empty(queue, error)) {
@@ -1483,7 +1486,7 @@ void queueCleanup(FIFOq_p queue, char *qstr, int *error)
             
             if (pcb != idl) {
                 char pcbstr[PCB_TOSTRING_LEN];
-                if (EXIT_STATUS_MESSAGE)
+                if (CLEANUP_MESSAGE)
                     printf("\t\t       %s\n", PCB_toString(pcb, pcbstr, error));
                 if (pcb->queues == 0) PCB_destruct(pcb);
 
@@ -1491,7 +1494,7 @@ void queueCleanup(FIFOq_p queue, char *qstr, int *error)
                 puts("IDL!!!!!!!!!");
 
         }
-    } else if (EXIT_STATUS_MESSAGE)
+    } else if (CLEANUP_MESSAGE)
         printf(" empty\n");
     FIFOq_destruct(queue, error);
 }
