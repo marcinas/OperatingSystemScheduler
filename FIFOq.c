@@ -189,7 +189,7 @@ char *FIFOq_toString(FIFOq_p this, char *str, int *stz, int *error)
 //                usedChars += snprintf(str + strlen(str), *stz - usedChars, "%cP%lu-", node == this->head? ' ' : '>', pid, PCB_toString);
                 usedChars += snprintf(str + strlen(str), *stz - usedChars,
                                       "-> PID: 0x%05lx%s", pid,
-                                      (newline++ % 12) ? " " : "\n\t\t\t");
+                                      (newline++ % 10) ? " " : "\n\t\t\t");
                 node = node->next_node;
             }
             usedChars += snprintf(str + strlen(str), *stz - usedChars,

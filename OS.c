@@ -587,6 +587,56 @@ void *io(void *tid) {
 }
 
 
+/**
+ * Instantiates a mutex grouping for containing the associated locks, conditions,
+ * elephants, resources, flags, etc. Keeps track of members for termination
+ * purposes.
+ * 
+ * @param error is the error
+ * @return the instantiated error pair
+ */
+PCB_r mutexPair(int *error) {
+    if (group == NULL)
+        *error += PCB_RESOURCE_ERROR;
+    PCB_r pair = (PCB_r) malloc(sizeof(struct shared_resource));
+    //sprintf(pair->fcond, "created");
+    pair->members = 0;
+    int r; //instantiate group members such as mutex, conds, in loop
+    for (r = 0; r < MUTUAL_MAX_RESOURCES; r++) { 
+        //todo:add error
+        pair->flag[r] = true;
+        pair->resource[r] = 0;
+        pair->fmutex[r] = FIFOq_construct(error);//mutex_lock_create(NULL);
+        pair->fcond[r] = FIFOq_construct(error);//cond_var_create(NULL);
+    }
+    return pair;
+    
+}
+
+/**
+ * Empties the mutex because no one needed it anyways.
+ * 
+ * @param pair is the pair to udderly destroy.
+ * @param error is the error.
+ */
+void mutexEmpty(PCB_r pair, int *error) {
+
+    if (pair != empty && pair != NULL) {
+        int r; //deallocate pair members such as mutex, conds, in loop
+        for (r = 0; r < MUTUAL_MAX_RESOURCES; r++) {
+            if (!FIFOq_is_empty(pair->fmutex[r], NULL)) *error += PCB_RESOURCE_ERROR;
+            else FIFOq_destruct(pair->fmutex[r], error);
+
+            if (!FIFOq_is_empty(pair->fcond[r], NULL)) *error += PCB_RESOURCE_ERROR;
+            else FIFOq_destruct(pair->fcond[r], error);
+        }
+        free(pair);
+        pair = NULL;
+    }
+    
+}
+
+
 
 
 /******************************************************************************/
@@ -920,15 +970,19 @@ void awakeStarvationDaemon(int *error) {
     if (DEBUG) printf( "~?~?~?~?~?~?~?~?~?~?~?~?~?~?~?~?~?~?~?~?~?~?~?~?~?~?~?~?~?~?~?~?~?~?~?");
     if (DEBUG) printf("Starvation Daemon");
     int rank;
+    
     for (rank = 0; rank < PRIORITIES_TOTAL; rank++) {
         Node_p curr = readyQ[rank]->head;
         Node_p prev = curr;
         Node_p next;
+        
         while (curr != NULL) {
+            
             if (DEBUG) {
                 printf(">PID of inspect: %lu while Rank: %d PCB rank: %hu, attentionRecieved: %lu\n", curr->data->pid, rank, curr->data->priority, curr->data->attentionCount);
                 printf("Wait time: %lu\n", (clock_ - curr->data->lastClock));
             }
+        
             //if current received enough attention then remove, demote and set current to next
             if (curr->data->attentionCount >= PROMOTION_ALLOWANCE) {
                 if (DEBUG) printf("Demoting a process");
@@ -942,45 +996,33 @@ void awakeStarvationDaemon(int *error) {
                 if (OUTPUT) printf(">Demoted:              %s\n", PCB_toString(curr->data, pcbstr, error));
                 curr = next;
                 if (curr == readyQ[rank]->head) prev = curr;
-            } else if (rank > 0 && (clock_ - curr->data->lastClock) >
-                                   STARVATION_CLOCK_LIMIT) {
+                
+            } else if (rank > 0 && (clock_ - curr->data->lastClock) > STARVATION_CLOCK_LIMIT) {
+                
                 //remove current, promote current process, set current to next
-                if (DEBUG)
-                    puts("Promoting a process");
-                if (DEBUG)
-                    printf(">Promoted PID: %lu while Rank: %d PCB rank: "
-                               "%hu attentionRecieved: %lu\n",
-                           curr->data->pid, rank, curr->data->priority,
-                           curr->data->attentionCount);
+                if (DEBUG) printf("Promoting a process");
+                if (DEBUG) printf(">Promoted PID: %lu while Rank: %d PCB rank: %hu attentionRecieved: %lu\n", curr->data->pid, rank, curr->data->priority, curr->data->attentionCount);
 
                 next = FIFOq_remove_and_return_next(curr, prev, readyQ[rank]);
-                if (!curr->data->promoted) {
-                    curr->data->attentionCount = 0;
-                } else {
-                    if (DEBUG)
-                        printf("Node PID: %lu\n promoted once again.\n",
-                               curr->data->pid);
-                }
+                if (!curr->data->promoted) curr->data->attentionCount = 0;
+                else if (DEBUG) printf("Node PID: %lu\n promoted once again.\n", curr->data->pid);
                 char pcbstr[PCB_TOSTRING_LEN];
-                if (OUTPUT)
-                    printf(">Promoted:             %s\n",
-                           PCB_toString(curr->data, pcbstr, error));
+                if (OUTPUT) printf(">Promoted:             %s\n", PCB_toString(curr->data, pcbstr, error));
                 curr->data->promoted = true;
                 curr->data->priority = rank - 1;
                 FIFOq_enqueue(readyQ[curr->data->priority], curr, error);
                 curr = next;
-                if (curr == readyQ[rank]->head) {
-                    prev = curr;
-                }
+                if (curr == readyQ[rank]->head) prev = curr;
             } else {
                 prev = curr;
                 curr = curr->next_node;
             }
         }
     }
+    
     int g, r;
     PCB_p temp;
-    for (g = 1; g <= MAX_SHARED_RESOURCES; g++) {
+    for (g = 1; g <= MAX_SHARED_RESOURCES; g++)
         for (r = 0; r < MUTUAL_MAX_RESOURCES; r++) {
             temp = FIFOq_peek(group[g]->fmutex[r], error);
             if (temp != NULL && temp != current && temp->state == blocked &&
@@ -991,19 +1033,16 @@ void awakeStarvationDaemon(int *error) {
                 FIFOq_enqueuePCB(readyQ[temp->priority], temp, error);
             }
         }
-    }
-    if (DEBUG)
-        puts(
-            "~?~?~?~?~?~?~?~?~?~?~?~?~?~?~?~?~?~?~?~?~?~?~?~?~?~?~?~?~?~?~?~?~?~?~?");
-
+    if (DEBUG) printf("~?~?~?~?~?~?~?~?~?~?~?~?~?~?~?~?~?~?~?~?~?~?~?~?~?~?~?~?~?~?~?~?~?~?~?");
 
 }
 
-/* Dispatches a new current process by dequeuing the head of the ready queue,
+/** Dispatches a new current process by dequeuing the head of the ready queue,
  * setting its state to running and copying its CPU state onto the stack.
+ * 
+ * @param error is a toothbrush.
  */
-void dispatcher(int *error)
-{
+void dispatcher(int *error) {
 
     int r;
 
@@ -1012,8 +1051,7 @@ void dispatcher(int *error)
         printf("%s", "ERROR: readyQ is null");
     } else
         for (r = 0; r < PRIORITIES_TOTAL; r++)
-            if (!FIFOq_is_empty(readyQ[r],
-                                error)) { //dequeue the head of readyQueue
+            if (!FIFOq_is_empty(readyQ[r], error)) { //dequeue the head of readyQueue
                 current = FIFOq_dequeue(readyQ[r], error);
                 break;
             }
@@ -1027,35 +1065,32 @@ void dispatcher(int *error)
     }
 
     //copy currents's PC value to SystemStack
-    if (DEBUG)
-        printf("\t\tStack going to push dispatch: %d\n", SysPointer);
+    if (DEBUG) printf("\t\tStack going to push dispatch: %d\n", SysPointer);
     sysStackPush(current->regs, error);
 
 }
 
-/* Creates 0 to 5 PCBs and enqueues them into a special queue, create queue.
- * Keeps track of how many PCBs have been created and sends an exit signal
- * when 30 have been created.
+/** Creates 0 to 5 PCBs and enqueues them into a special queue, create queue.
+ * Keeps track of how many PCBs have been created and makes sure that new PCBs
+ * get created with the proper parameters.
+ * 
+ * @param error is an accident waiting to happen.
  */
-int createPCBs(int *error)
-{
+int createPCBs(int *error) {
+    
     static bool first_batch = !PCB_CREATE_FIRST;
-    if (first_batch && (!PCB_CREATE_EVERY) && (rand() % PCB_CREATE_CHANCE))
-        return OS_NO_ERROR;
+    if (first_batch && (!PCB_CREATE_EVERY) && (rand() % PCB_CREATE_CHANCE)) return OS_NO_ERROR;
     // random number of new processes between 0 and 5
     static int processes_created = 0;
     static int g = 0;
 
-    if (processes_created >= MAX_PROCESSES)
-        return -1;
+    if (processes_created >= MAX_PROCESSES) return -1;
 
     int i;
     int r = rand() % (MAX_NEW_PCB + 1);
     char buffer[PCB_TOSTRING_LEN];
 
-    if (r + processes_created >= MAX_PROCESSES) {
-        r = MAX_PROCESSES - processes_created;
-    }
+    if (r + processes_created >= MAX_PROCESSES) r = MAX_PROCESSES - processes_created;
 
     if (START_IDLE && processes_created == 0) {
         r = 0;
@@ -1068,50 +1103,41 @@ int createPCBs(int *error)
         return *error;
     }
 
-    if (CREATEPCB_DEBUG)
-        printf(
-            "createPCBs: creating up to %d PCBs and enqueueing them to createQ\n",
-            r);
+    if (CREATEPCB_DEBUG) printf("createPCBs: creating up to %d PCBs and enqueueing them to createQ\n", r);
     for (i = 0; i < r; i++) {
-
 
         if (!PCBs_available()) {
             r = i;
-            if (CREATEPCB_DEBUG)
-                printf("all pcbs used up; %d pcbs created\n", r);
+            if (CREATEPCB_DEBUG) printf("all pcbs used up; %d pcbs created\n", r);
             break;
         }
         // PCB_construct initializes state to 0 (created)
         PCB_p newPcb = PCB_construct_init(error);
 
-        if (newPcb->type == undefined)
-            *error += PCB_UNDEFINED_ERROR;
+        if (newPcb->type == undefined) *error += PCB_UNDEFINED_ERROR;
 
         newPcb->timeCreate = clock_;
         newPcb->lastClock = clock_;
         closeable += newPcb->regs->reg.TERMINATE > 0;
 
         if (!g && newPcb->type > regular && newPcb->type <= LAST_PAIR) {
-            for (g = 1; g <= MAX_SHARED_RESOURCES; g++)
-                if (group[g] == empty)
-                    break;
-            if (MUTEX_DEBUG)
-                printf("%d\n", g);
+            
+            for (g = 1; g <= MAX_SHARED_RESOURCES; g++) if (group[g] == empty) break;
+            if (MUTEX_DEBUG) printf("%d\n", g);
             if (g == MAX_SHARED_RESOURCES+1) {
-                printf("ERROR: max_resource exceeded: %s\n",
-                       TYPE[newPcb->type]);
+                printf("ERROR: max_resource exceeded: %s\n", TYPE[newPcb->type]);
                 *error += PCB_RESOURCE_ERROR;
             } else {
                 group[g] = mutexPair(error);
                 group[g]->members = 1;
                 newPcb->group = g;
             }
+            
         } else if (g) {
+            
             if (newPcb->type <= LAST_PAIR || newPcb->type == undefined) {
-                printf("ERROR: second pair not of pair type: %s + %d\n",
-                       TYPE[newPcb->type], g);
+                printf("ERROR: second pair not of pair type: %s + %d\n", TYPE[newPcb->type], g);
                 *error += PCB_RESOURCE_ERROR;
-
             } else {
                 newPcb->group = g;
                 group[g]->members++;
@@ -1122,54 +1148,16 @@ int createPCBs(int *error)
 
         }
 
-        if (CREATEPCB_DEBUG)
-            printf("New PCB created: %s\n",
-                   PCB_toString(newPcb, buffer, error));
+        if (CREATEPCB_DEBUG) printf("New PCB created: %s\n", PCB_toString(newPcb, buffer, error));
         FIFOq_enqueuePCB(createQ, newPcb, error);
         processes_created++;
     }
-    if (CREATEPCB_DEBUG)
-        printf("PCBs all created\n");
-    if (!first_batch)
-        first_batch = r;
-    if (CREATEPCB_DEBUG)
-        printf("total created pcbs: %d and exit = %d\n", processes_created,
-               (processes_created >= MAX_PROCESSES ? -1 : 0));
+    
+    if (CREATEPCB_DEBUG) printf("PCBs all created\n");
+    if (!first_batch) first_batch = r;
+    if (CREATEPCB_DEBUG) printf("total created pcbs: %d and exit = %d\n", processes_created, (processes_created >= MAX_PROCESSES ? -1 : 0));
+    
     return (processes_created >= MAX_PROCESSES ? -2 : 0);
-}
-
-PCB_r mutexPair(int *error)
-{
-    if (group == NULL)
-        *error += PCB_RESOURCE_ERROR;
-    PCB_r pair = (PCB_r) malloc(sizeof(struct shared_resource));
-    //sprintf(pair->fcond, "created");
-    pair->members = 0;
-    int r; //instantiate group members such as mutex, conds, in loop
-    for (r = 0; r < MUTUAL_MAX_RESOURCES; r++) { 
-        //todo:add error
-        pair->flag[r] = true;
-        pair->resource[r] = 0;
-        pair->fmutex[r] = FIFOq_construct(error);//mutex_lock_create(NULL);
-        pair->fcond[r] = FIFOq_construct(error);//cond_var_create(NULL);
-    }
-    return pair;
-}
-
-void mutexEmpty(PCB_r pair, int *error) {
-
-    if (pair != empty && pair != NULL) {
-        int r; //deallocate pair members such as mutex, conds, in loop
-        for (r = 0; r < MUTUAL_MAX_RESOURCES; r++) {
-            if (!FIFOq_is_empty(pair->fmutex[r], NULL)) *error += PCB_RESOURCE_ERROR;
-            else FIFOq_destruct(pair->fmutex[r], error);
-
-            if (!FIFOq_is_empty(pair->fcond[r], NULL)) *error += PCB_RESOURCE_ERROR;
-            else FIFOq_destruct(pair->fcond[r], error);
-        }
-        free(pair);
-        pair = NULL;
-    }
     
 }
 
@@ -1180,48 +1168,45 @@ void mutexEmpty(PCB_r pair, int *error) {
 /************************** SYSTEM SUBROUTINES ********************************/
 /******************************************************************************/
 
-void sysStackPush(REG_p fromRegs, int *error)
-{
-    int r;
-
-    for (r = 0; r < REGNUM; r++) {
-        if (SysPointer >= SYSSIZE - 1) {
-            *error += CPU_STACK_ERROR;
-            printf("ERROR: Sysstack exceeded\n");
-        } else {
-            SysStack[SysPointer++] = fromRegs->gpu[r];
-        }
-    }
-    int i;
-    if (STACK_DEBUG)
-        for (i = 0; i <= SysPointer; i++)
-            printf("\tPostPush SysStack[%d] = %lu\n", i, SysStack[i]);
+/**
+ * Pushes the given PCB's registers onto the stack.
+ * 
+ * @param fromRegs are the registers to push onto the stack.
+ * @param error is an error.
+ */
+void sysStackPush(REG_p fromRegs, int *error) {
+    
+    int r,i;
+    for (r = 0; r < REGNUM; r++)
+        if (SysPointer >= SYSSIZE - 1) { *error += CPU_STACK_ERROR; printf("ERROR: Sysstack exceeded\n");
+        } else SysStack[SysPointer++] = fromRegs->gpu[r];
+    
+    if (STACK_DEBUG) for (i = 0; i <= SysPointer; i++) printf("\tPostPush SysStack[%d] = %lu\n", i, SysStack[i]);
+    
 }
 
-void sysStackPop(REG_p toRegs, int *error)
-{
-    int r;
-    if (STACK_DEBUG)
-        printf("max_pc is %lu\n", toRegs->reg.MAX_PC);
+/**
+ * Pushes the registers stored on the stack onto the given register.
+ * 
+ * @param toRegs is the PCB whose registers we're popping to.
+ * @param error
+ */
+void sysStackPop(REG_p toRegs, int *error) {
+    
+    int r,i;
+    if (STACK_DEBUG) printf("max_pc is %lu\n", toRegs->reg.MAX_PC);
     for (r = REGNUM - 1; r >= 0; r--)
-        if (SysPointer <= 0) {
-            *error += CPU_STACK_ERROR;
-            printf("ERROR: Sysstack exceeded\n");
-            toRegs->gpu[r] = STACK_ERROR_DEFAULT;
+        if (SysPointer <= 0) { *error += CPU_STACK_ERROR; printf("ERROR: Sysstack exceeded\n"); toRegs->gpu[r] = STACK_ERROR_DEFAULT;
         } else {
-            if (STACK_DEBUG)
-                printf("\tpopping SysStack[%d] = %lu ", SysPointer - 1,
-                       SysStack[SysPointer - 1]);
+            if (STACK_DEBUG) printf("\tpopping SysStack[%d] = %lu ", SysPointer - 1, SysStack[SysPointer - 1]);
             toRegs->gpu[r] = SysStack[--SysPointer];
-            if (STACK_DEBUG)
-                printf("at location %d: %lu\n", r, toRegs->gpu[r]);
+            if (STACK_DEBUG) printf("at location %d: %lu\n", r, toRegs->gpu[r]);
         }
-    if (STACK_DEBUG)
+    if (STACK_DEBUG) {
         printf("max_pc is %lu\n", toRegs->reg.MAX_PC);
-    int i;
-    for (i = 0; i <= SysPointer; i++)
-        if (STACK_DEBUG)
-            printf("\tPost-Pop SysStack[%d] = %lu\n", i, SysStack[i]);
+        for (i = 0; i <= SysPointer; i++) printf("\tPost-Pop SysStack[%d] = %lu\n", i, SysStack[i]);
+    }
+    
 }
 
 
@@ -1353,7 +1338,7 @@ void queueCleanup(FIFOq_p queue, char *qstr, int *error)
 
     if (printQueue) {
         printf("\n>%s deallocating...\n", qstr);
-        printf(">FIFO Queue %s", FIFOq_toString(queue, str, &stz, error));
+        printf(">FIFO Queue %s\n", FIFOq_toString(queue, str, &stz, error));
     }
 
     if (queue->size) {

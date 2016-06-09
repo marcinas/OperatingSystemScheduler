@@ -1,3 +1,15 @@
+Experiments
+
+Set up your simulation to go through a fixed number of loops, say 100,000 for each run. Be sure to seed the random number generator with a different number each time (a convenient way to do this is to use the system clock at runtime) you do a run.
+
+Run the simulator at least ten times with the no-deadlock and ten times with the deadlock possible setups. Do a search through the output files for key events (deadlock in particular) and summarize these in a report.
+
+Report
+
+For each run of the simulator collect data on the number of processes that were run (total) and the numbers of processes still in all of the queues (ready and waiting) at the termination of the run. This will require an additional kind of "instrumentation". Collect all of these data for all runs and create a text report that summarizes the data. I'm not mandating any particular format - use your best judgment - but try to think through what kinds of questions might be satisfied by this summarized data.
+
+In addition to the report on performance, include a summary of your starvation prevention algorithm and implementation techniques so I can see how you solved the problem.
+
 Starvation Check Report
 
 Our starvation algorithm goes through the whole Ready Queue and checks
