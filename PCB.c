@@ -7,12 +7,12 @@
 #include "PCB.h"
 
 //struct and error defines originally here
-char *STATE[] = {"created    ", "ready      ", "running    ", "waiting    ",
-                 "interrupted", "blocked    ", "terminated ", "nostate    "};
-char *TYPE[] = {"regular  ", "producer ", "mutual_A ",
-                             "consumer ", "mutual_B ", "undefined"};
+//static char *STATE[] = {"created    ", "ready      ", "running    ", "waiting    ",
+//                 "interrupted", "blocked    ", "terminated ", "nostate    "};
+//static char *TYPE[] = {"regular  ", "producer ", "mutual_A ",
+//                             "consumer ", "mutual_B ", "undefined"};
 
-word CODE_TYPE[(LAST_PAIR*2)+1][CALL_NUMBER] = { {0,0,0,0,0,0},
+static word CODE_TYPE[(LAST_PAIR*2)+1][CALL_NUMBER] = { {0,0,0,0,0,0},
     /* producer */ { CODE_LOCK+0, CODE_WAIT_F+0, CODE_WRITE+0, CODE_FLAG+0, CODE_SIGNAL+0, CODE_UNLOCK+0 },
     /* mutual_a */ { CODE_LOCK+0, CODE_LOCK+1, CODE_WRITE+0, CODE_WRITE+1, CODE_UNLOCK+1, CODE_UNLOCK+0 },
     /* consumer */ { CODE_LOCK+0, CODE_WAIT_T+0, CODE_READ+0, CODE_FLAG+0, CODE_SIGNAL+0, CODE_UNLOCK+0 },
@@ -506,7 +506,7 @@ char *PCB_toString(PCB_p this, char *str, int *ptr_error)
 //
 //
 //        } else {
-        const char *format = "PID: 0x%08lx  PC: 0x%05lx  State: %s  Priority: 0x%x  Intensity: %s  Type: %s  Group: %2lu  %s Created: 0x%05lx Ended: 0x%05lx";
+        const char *format = "PID: 0x%04lx  PC: 0x%06lx  State: %s  Priority: 0x%x  Intensity: %s  Type: %s  Group: %2lu  %s Create: 0x%06lx End: 0x%06lx";
         snprintf(str, (size_t) PCB_TOSTRING_LEN - 1, format, this->pid,
                  this->regs->reg.pc,
                  STATE[this->state], this->orig_priority,
@@ -538,7 +538,7 @@ char *Reg_File_toString(REG_p this, char *str, int *ptr_error)
     int error = (this == NULL || str == NULL) * PCB_NULL_ERROR;
     if (!error) {
         str[0] = '\0';
-        const char *format = "MaxPC: 0x%05lx  Rollover: 0x%05lx  Terminate: 0x%05lx";
+        const char *format = "MaxPC: 0x%06lx  Rollover: 0x%06lx  Terminate: 0x%06lx";
         snprintf(str, (size_t) PCB_TOSTRING_LEN - 1, format, this->reg.MAX_PC,
                  this->reg.term_count, this->reg.TERMINATE);
     }

@@ -179,7 +179,7 @@ char *FIFOq_toString(FIFOq_p this, char *str, int *stz, int *error)
         usedChars += snprintf(str, *stz - usedChars, "Head:     ");
         if (this->head != NULL) {
             Node_p node = this->head;
-            usedChars += snprintf(str + strlen(str), *stz - usedChars, " %s\n-",
+            usedChars += snprintf(str + strlen(str), *stz - usedChars, " %s\n\t\t\t",
                                   PCB_toString(node->data, pcbstr, error));
             node = node->next_node;
             int newline = 1;
@@ -189,12 +189,12 @@ char *FIFOq_toString(FIFOq_p this, char *str, int *stz, int *error)
                 //alternate P1->P2-* scheme
 //                usedChars += snprintf(str + strlen(str), *stz - usedChars, "%cP%lu-", node == this->head? ' ' : '>', pid, PCB_toString);
                 usedChars += snprintf(str + strlen(str), *stz - usedChars,
-                                      "> PID: 0x%04lx%c-", pid,
-                                      (newline++ % 5) ? ' ' : '\n');
+                                      "-> PID: 0x%05lx%s", pid,
+                                      (newline++ % 12) ? " " : "\n\t\t\t");
                 node = node->next_node;
             }
             usedChars += snprintf(str + strlen(str), *stz - usedChars,
-                                  "* (Queue Count = %d)", this->size);
+                                  "-* (Queue Count = %d)", this->size);
         }
         *stz = *stz - usedChars;
         return str;

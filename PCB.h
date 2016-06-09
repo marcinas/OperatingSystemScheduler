@@ -79,6 +79,11 @@
 #define CODE_WRITE 70000
 #define CODE_FLAG 80000
 
+static char *STATE[] = {"created    ", "ready      ", "running    ", "waiting    ",
+                 "interrupted", "blocked    ", "terminated ", "nostate    "};
+static char *TYPE[] = {"regular  ", "producer ", "mutual_A ",
+                             "consumer ", "mutual_B ", "undefined"};
+
 enum state_type
 {
     created = 0,

@@ -103,7 +103,7 @@ int main(void)
         int d;
         if (EXIT_STATUS_MESSAGE)
             for (d = 0; d < 4; d++)
-                printf("---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------\n");
+                printf("------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------\n");
     }
 
     word mass_error = 0;
@@ -153,13 +153,13 @@ int bootOS()
 
     //idl pcb has special parameters
     idl = PCB_construct(&boot_error);
-    idl->pid = ULONG_MAX;
+    idl->pid = 0xffff;
     idl->io = false;
     idl->type = undefined;
     idl->priority = LOWEST_PRIORITY;
     idl->state = waiting;
     idl->timeCreate = 0;
-    idl->timeTerminate = ULONG_MAX;
+    idl->timeTerminate = 0;
 
     idl->regs->reg.pc = 0;
     idl->regs->reg.MAX_PC = 1000;
@@ -307,7 +307,7 @@ int mainLoopOS(int *error)
                         switch (call) {
                             case CODE_LOCK:
                                 if (OUTPUT || MUTEX_DEBUG)
-                                    printf(">Lock %02lu-%d request:  %s\n", current->group, resource,
+                                    printf(">Lock %02lu-%d request:    %s\n", current->group, resource,
                                             PCB_toString(current, curstr, error));
                                 bool lock = FIFOq_is_empty(group[current->group]->fmutex[resource], error);
                                 if (FIFOq_peek(group[current->group]->fmutex[resource], error) == current)
@@ -316,14 +316,14 @@ int mainLoopOS(int *error)
                                     FIFOq_enqueuePCB(group[current->group]->fmutex[resource], current, error);
                                 if (lock) {
                                     if (OUTPUT || MUTEX_DEBUG)
-                                        printf(">Mutex attained:          %s\n",
+                                        printf(">Mutex attained:       %s\n",
                                                 PCB_toString(current, pcbstr, error));
                                 } else {
                                     waitforbuddy = true;
                                     if (OUTPUT || MUTEX_DEBUG) {
                                         PCB_p block = FIFOq_peek(group[current->group]->fmutex[resource], error);
                                         if (block == NULL) *error += OS_MUTEX_ERROR;
-                                        printf(">Lock blocked by:        %s\n",
+                                        printf(">Lock blocked by:      %s\n",
                                             PCB_toString(block, pcbstr, error));
                                     }
                                 }
@@ -344,7 +344,7 @@ int mainLoopOS(int *error)
                                     resource += 1;
                                     resource *= -1;
                                     if (OUTPUT || MUTEX_DEBUG)
-                                        printf(">Cond %02lu-%d wait:     %s\n", current->group, resource,
+                                        printf(">Cond %02lu-%d wait:      %s\n", current->group, resource,
                                                 PCB_toString(current, curstr, error));
                                 }
                                 break;
@@ -359,7 +359,7 @@ int mainLoopOS(int *error)
                                     resource += 1;
                                     resource *= -1;
                                     if (OUTPUT || MUTEX_DEBUG)
-                                        printf(">Cond %02lu-%d wait:     %s\n", current->group, resource,
+                                        printf(">Cond %02lu-%d wait:      %s\n", current->group, resource,
                                                 PCB_toString(current, curstr, error));
                                 }
                                 break;
@@ -381,7 +381,7 @@ int mainLoopOS(int *error)
                             case CODE_FLAG:
                                 group[current->group]->flag[resource] ^= true;
                                 if (OUTPUT || MUTEX_DEBUG)
-                                    printf(">Flag %02lu-%d switched: %s\n", current->group, resource,
+                                    printf(">Flag %02lu-%d switched:   %s\n", current->group, resource,
                                         PCB_toString(current, curstr, error));
                                 break;
                             default:
@@ -675,6 +675,7 @@ void *io(void *tid)
 
 void trap_terminate(int *error)
 {
+    int t;
     sysStackPop(current->regs, error);
     PCB_setState(current,
                  terminated); //this is the ONLY PLACE a pcb should ever be terminated
@@ -682,6 +683,11 @@ void trap_terminate(int *error)
     current->priority = current->orig_priority;
     closeable--;
     if (current->group) {
+        if (current->queues)
+            for (t = 0; t < MUTUAL_MAX_RESOURCES; t++)
+                if (FIFOq_peek(group[current->group]->fmutex[t], error) == current) {
+                    trap_requehandler(-(t+1), error);
+                }
         group[current->group]->members--;
         if (group[current->group]->members == 0) {
             PCB_r pair = group[current->group];
@@ -782,7 +788,7 @@ void trap_requehandler(const int T, int *error)
         FIFOq_enqueuePCB(readyQ[pcb->priority], pcb, error);
         char unlstr[PCB_TOSTRING_LEN];
         if ((OUTPUT || MUTEX_DEBUG))
-            printf(">Group %d dequeue:    %s\n", t,
+            printf(">Group %d dequeue:      %s\n", t,
                PCB_toString(pcb, unlstr, error));
     }
 
@@ -934,7 +940,7 @@ void scheduler(int *error)
                 && (group[i]->fmutex[1]->head->data->type == mutual_A || group[i]->fmutex[1]->head->data->type == mutual_B)
                ){
                 puts("deadlock detected");
-                printf("%x and %x are deadlocked\n",group[i]->fmutex[0]->head->data->pid, group[i]->fmutex[1]->head->data->pid);
+                printf("%lu and %lu are deadlocked\n",group[i]->fmutex[0]->head->data->pid, group[i]->fmutex[1]->head->data->pid);
             }
         }
     }
@@ -1335,7 +1341,7 @@ void cleanup(int *error)
 {
 
     if (EXIT_STATUS_MESSAGE)
-        printf(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>\n\n");
+        printf(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>\n\n");
 
     int t;
     int s;
@@ -1452,7 +1458,7 @@ void queueCleanup(FIFOq_p queue, char *qstr, int *error)
 
     if (EXIT_STATUS_MESSAGE) {
         printf("\n>%s deallocating...\n", qstr);
-        printf(">%s", FIFOq_toString(queue, str, &stz, error));
+        printf(">FIFO Queue %s", FIFOq_toString(queue, str, &stz, error));
     }
 
     if (queue->size) {
@@ -1466,7 +1472,7 @@ void queueCleanup(FIFOq_p queue, char *qstr, int *error)
             if (pcb != idl) {
                 char pcbstr[PCB_TOSTRING_LEN];
                 if (EXIT_STATUS_MESSAGE)
-                    printf("\t%s\n", PCB_toString(pcb, pcbstr, error));
+                    printf("\t\t       %s\n", PCB_toString(pcb, pcbstr, error));
                 if (pcb->queues == 0) PCB_destruct(pcb);
 
             } else
