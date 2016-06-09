@@ -1216,69 +1216,67 @@ void sysStackPop(REG_p toRegs, int *error) {
 /**************************** DEALLOCATION ************************************/
 /******************************************************************************/
 
-void cleanup(int *error)
-{
+/**
+ * Cleans up the horrible horrible mess that Chris made.
+ * 
+ * @param error is the error.
+ */
+void cleanup(int *error) {
 
-    if (EXIT_STATUS_MESSAGE)
-        printf(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>\n\n");
+    int t, r;
+    if (EXIT_STATUS_MESSAGE) for (t = 0; t < 4; t++) { for (r = 0; r < MAX_FIELD_WIDTH; r++) printf(">"); printf("\n"); }
+    if (DEBUG) printf("cleanup begin\n");
 
-    int t;
-    int s;
-    if (DEBUG)
-        printf("cleanup begin\n");
-
-    //while (!pthread_mutex_trylock(&MUTEX_timer)); //wait for timer
     pthread_cond_wait(&COND_timer, &MUTEX_timer);
     SHUTOFF_timer = true;
     pthread_mutex_unlock(&MUTEX_timer);
     pthread_cond_signal(&COND_timer);
-    if (THREAD_DEBUG)
-        printf("timer shutoff signal sent\n");
+    if (THREAD_DEBUG) printf("timer shutoff signal sent\n");
     pthread_join(THREAD_timer, NULL);
-
-    if (THREAD_DEBUG)
-        printf("timer shutoff successful\n");
+    if (THREAD_DEBUG) printf("timer shutoff successful\n");
     pthread_mutex_destroy(&MUTEX_timer);
     pthread_cond_destroy(&COND_timer);
 
+    //terminate them queues
     queueCleanup(terminateQ, "terminateQ", error);
-
-
-    for (t = 0; t < IO_NUMBER; t++) {
-        char wQ[14] = "IOwaitingQ_x";
-        wQ[11] = t + '0';
-        pthread_cond_signal(&(IO[t]->COND_io));
-
-        pthread_mutex_lock(&(IO[t]->MUTEX_io));
-
-        IO[t]->SHUTOFF_io = true;
-        pthread_mutex_unlock(&(IO[t]->MUTEX_io));
-        pthread_cond_signal(&(IO[t]->COND_io));
-        if (THREAD_DEBUG)
-            printf("io %d shutoff signal sent\n", t + FIRST_IO);
-        pthread_join((IO[t]->THREAD_io), NULL);
-        //...
-        if (THREAD_DEBUG)
-            printf("io %d shutoff successful\n", t + FIRST_IO);
-        pthread_mutex_destroy(&(IO[t]->MUTEX_io));
-        pthread_cond_destroy(&(IO[t]->COND_io));
-        queueCleanup(IO[t]->waitingQ, wQ, error);
-        free(IO[t]);
-        IO[t] = NULL;
-    }
-
-    int r;
+    
+    //ready q go bi-bi
     char qustr[16];
     for (r = 0; r < PRIORITIES_TOTAL; r++) {
         sprintf(qustr, "readyQ[%d]", r);
         queueCleanup(readyQ[r], qustr, error);
     }
+    
+    //no more creation
     queueCleanup(createQ, "createQ", error);
 
+    //and no more io either
+    for (t = 0; t < IO_NUMBER; t++) {
+        
+        char wQ[14] = "IOwaitingQ_x";
+        wQ[11] = t + '0';
+        pthread_cond_signal(&(IO[t]->COND_io));
+        pthread_mutex_lock(&(IO[t]->MUTEX_io));
+
+        IO[t]->SHUTOFF_io = true;
+        pthread_mutex_unlock(&(IO[t]->MUTEX_io));
+        pthread_cond_signal(&(IO[t]->COND_io));
+        if (THREAD_DEBUG) printf("io %d shutoff signal sent\n", t + FIRST_IO);
+        pthread_join((IO[t]->THREAD_io), NULL);
+        //...
+        if (THREAD_DEBUG) printf("io %d shutoff successful\n", t + FIRST_IO);
+        pthread_mutex_destroy(&(IO[t]->MUTEX_io));
+        pthread_cond_destroy(&(IO[t]->COND_io));
+        queueCleanup(IO[t]->waitingQ, wQ, error);
+        free(IO[t]);
+        IO[t] = NULL;
+        
+    }
+
     for (t = 1; t <= MAX_SHARED_RESOURCES; t++) {
+        
         if (group[t] != empty) {
             //deallocation
-            int r;
             for (r = 0; r < MUTUAL_MAX_RESOURCES; r++) {
                 char mQ[24] = "group_yy mutexQ_x";
                 mQ[6] = (t/10) + '0';
@@ -1293,12 +1291,11 @@ void cleanup(int *error)
                 cQ[6] = (t/10) + '0';
                 cQ[7] = (t%10) + '0';
                 cQ[15] = r + '0';
-                if (!FIFOq_is_empty(group[t]->fcond[r], error))
-                   queueCleanup(group[t]->fcond[r], cQ, error);
-                else
-                    FIFOq_destruct(group[t]->fcond[r], error);
-                //cond_var_terminate(group[t]->fcond[r], &longerror);
+                if (!FIFOq_is_empty(group[t]->fcond[r], error)) queueCleanup(group[t]->fcond[r], cQ, error);
+                else FIFOq_destruct(group[t]->fcond[r], error);
+
             }
+            
             free(group[t]);
             group[t] = NULL;
         }
@@ -1308,6 +1305,7 @@ void cleanup(int *error)
 
     
     int endidl = current->pid == idl->pid;
+    
     if (idl != NULL) {
         if (EXIT_STATUS_MESSAGE) {
             char pcbstr[PCB_TOSTRING_LEN];
@@ -1315,23 +1313,27 @@ void cleanup(int *error)
         }
         PCB_destruct(idl);
     }
+    
     if (!endidl && current != NULL) {
         if (EXIT_STATUS_MESSAGE) {
             char pcbstr[PCB_TOSTRING_LEN];
-            printf("\n>Running PCB: %s\n",
-                   PCB_toString(current, pcbstr, error));
+            printf("\n>Running PCB: %s\n", PCB_toString(current, pcbstr, error));
         }
         PCB_destruct(current);
-    } else if (EXIT_STATUS_MESSAGE)
-        printf("\n>Idle process was final Running PCB\n");
+        
+    } else if (EXIT_STATUS_MESSAGE) printf("\n>Idle process was final Running PCB\n");
 
 }
 
-/* Deallocates the queue data structures on the C simulator running this program
- * so that we don't have memory leaks and horrible garbage.
+/** Deallocates the queue data structures on the C simulator running this program
+ * so that we don't have memory leaks and horrible garbage, like Daniel's code.
+ * 
+ * @param queue is the queue we're dequeueing and destroying
+ * @param qstr is the name of the queue
+ * @param error is the errrrrrrrrrrrrror.
  */
-void queueCleanup(FIFOq_p queue, char *qstr, int *error)
-{
+void queueCleanup(FIFOq_p queue, char *qstr, int *error) {
+    
     int stz = FIFOQ_TOSTRING_MAX;
     char str[stz];
     bool printQueue = (qstr[0] == 'g') ? THREAD_EMPTY_MESSAGE : CLEANUP_MESSAGE;
@@ -1344,14 +1346,13 @@ void queueCleanup(FIFOq_p queue, char *qstr, int *error)
     if (queue->size) {
         if (DEBUG) printf("size: %d\n", queue->size);
         if (CLEANUP_MESSAGE) printf(">System exited with non-empty %s\n", qstr);
+        
         while (!FIFOq_is_empty(queue, error)) {
             PCB_p pcb = FIFOq_dequeue(queue, error);
-            
             if (pcb != idl) {
                 char pcbstr[PCB_TOSTRING_LEN];
                 if (printQueue) printf("\t\t       %s\n", PCB_toString(pcb, pcbstr, error));
                 if (pcb->queues == 0) PCB_destruct(pcb);
-
             } else if (DEBUG) printf("IDL!!!!!!!!!");
         }
         
@@ -1360,17 +1361,16 @@ void queueCleanup(FIFOq_p queue, char *qstr, int *error)
     
 }
 
-/* Deallocates the stack data structure on the C simulator running this program
- * so that we don't have memory leaks and horrible garbage.
+/** Deallocates the stack data structure on the C simulator running this program
+ * so that we don't have memory leaks and horrible garbage, like Daniel's code.
+ * 
+ * ohmigod there's no arguments or returns!
  */
-void stackCleanup()
-{
+void stackCleanup() {
     int i;
     if (SysPointer > 0 && EXIT_STATUS_MESSAGE) {
         printf("System exited with non-empty stack\n");
-        for (i = 0; i <= SysPointer; i++) {
-            printf("\tSysStack[%d] = %lu\n", i, SysStack[i]);
-        }
+        for (i = 0; i <= SysPointer; i++) printf("\tSysStack[%d] = %lu\n", i, SysStack[i]);
     }
 }
 
@@ -1381,8 +1381,13 @@ void stackCleanup()
 /*************************** TESTING/DEBUG ************************************/
 /******************************************************************************/
 
-void nanosleeptest()
-{
+/**
+ * We did try the nanosleep function for system waiting, but the variance of
+ * system capabilties across various coder's (Mark and Bruno, pretty much) 
+ * computers (Mark: duo-core 1.6Ghz Asus;     Bruno: quad-core 2.53Ghz Lenovo)
+ * was too wide for acceptable results.
+ */
+void nanosleeptest() {
     int i = 0;
     struct timespec m = {.tv_sec = 0, .tv_nsec = 5};
     while (i < 100000) {

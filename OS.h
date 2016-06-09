@@ -26,7 +26,7 @@
 #define DEFAULT_TRACE "scheduleTrace.txt"
 #define DEBUG false
 #define THREAD_DEBUG false
-#define STACK_DEBUG true
+#define STACK_DEBUG false
 #define CREATEPCB_DEBUG false
 #define MUTEX_DEBUG false
 #define EXIT_STATUS_MESSAGE true
