@@ -506,7 +506,7 @@ char *PCB_toString(PCB_p this, char *str, int *ptr_error)
 //
 //
 //        } else {
-        const char *format = "PID: 0x%04lx  PC: 0x%06lx  State: %s  Priority: 0x%x  Intensity: %s  Type: %s  Group: %2lu  %s Create: 0x%06lx End: 0x%06lx";
+        const char *format = "PID: 0x%04lx  PC: 0x%05lx  State: %s  Priority: 0x%x  Intensity: %s  Type: %s  Group: %2lu  %s Create: 0x%05lx End: 0x%05lx";
         snprintf(str, (size_t) PCB_TOSTRING_LEN - 1, format, this->pid,
                  this->regs->reg.pc,
                  STATE[this->state], this->orig_priority,
@@ -538,7 +538,7 @@ char *Reg_File_toString(REG_p this, char *str, int *ptr_error)
     int error = (this == NULL || str == NULL) * PCB_NULL_ERROR;
     if (!error) {
         str[0] = '\0';
-        const char *format = "MaxPC: 0x%06lx  Rollover: 0x%06lx  Terminate: 0x%06lx";
+        const char *format = "MaxPC: 0x%06lx  Rollover: %3lu  Terminate: %3lu";
         snprintf(str, (size_t) PCB_TOSTRING_LEN - 1, format, this->reg.MAX_PC,
                  this->reg.term_count, this->reg.TERMINATE);
     }
