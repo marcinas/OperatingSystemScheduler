@@ -176,7 +176,7 @@ char *FIFOq_toString(FIFOq_p this, char *str, int *stz, int *error)
     if (!is_null(this, error) && !is_null(str, error)) {
         char pcbstr[PCB_TOSTRING_LEN];
         // ">I/O %d added:     %s\n"
-        usedChars += snprintf(str, *stz - usedChars, "Head:");
+        usedChars += snprintf(str, *stz - usedChars, "Head:     ");
         if (this->head != NULL) {
             Node_p node = this->head;
             usedChars += snprintf(str + strlen(str), *stz - usedChars, " %s\n-",
