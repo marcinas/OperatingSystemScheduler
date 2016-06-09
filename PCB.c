@@ -7,10 +7,10 @@
 #include "PCB.h"
 
 //struct and error defines originally here
-char *STATE[] = {"created", "ready", "running", "waiting", "interrupted",
-                 "blocked", "terminated", "nostate"};
-char *TYPE[] = {"regular", "producer", "mutual_A", "consumer", "mutual_B",
-                "undefined"};
+char *STATE[] = {"created    ", "ready      ", "running    ", "waiting    ",
+                 "interrupted", "blocked    ", "terminated ", "nostate    "};
+char *TYPE[] = {"regular  ", "producer ", "mutual_A ",
+                             "consumer ", "mutual_B ", "undefined"};
 
 word CODE_TYPE[(LAST_PAIR*2)+1][CALL_NUMBER] = { {0,0,0,0,0,0},
     /* producer */ { CODE_LOCK+0, CODE_WAIT_F+0, CODE_WRITE+0, CODE_FLAG+0, CODE_SIGNAL+0, CODE_UNLOCK+0 },
@@ -495,28 +495,28 @@ char *PCB_toString(PCB_p this, char *str, int *ptr_error)
         str[0] = '\0';
         char regString[PCB_TOSTRING_LEN - 1];
 
-        if (this->timeTerminate == DEFAULT_TIME_TERMINATE) {
-            const char *format = "PID: 0x%04lx  PC: 0x%05lx  State: %s  Priority: 0x%x  Intensity: %s  Type: %s  Group: %lu   %s TimeCreate: %lu";
-            snprintf(str, (size_t) PCB_TOSTRING_LEN - 1, format, this->pid,
-                     this->regs->reg.pc,
-                     STATE[this->state], this->orig_priority,
-                     this->io ? "IO" : "CPU", TYPE[this->type], this->group,
-                     Reg_File_toString(this->regs, regString, ptr_error),
-                     this->timeCreate);
-
-
-        } else {
-            const char *format = "PID: 0x%04lx  PC: 0x%05lx  State: %s  Priority: 0x%x  Intensity: %s  Type: %s  Group: %lu   %s TimeCreate: %lu TimeTerminate: %lu";
-            snprintf(str, (size_t) PCB_TOSTRING_LEN - 1, format, this->pid,
-                     this->regs->reg.pc,
-                     STATE[this->state], this->orig_priority,
-                     this->io ? "IO" : "CPU", TYPE[this->type], this->group,
-                     Reg_File_toString(this->regs, regString, ptr_error),
-                     this->timeCreate, this->timeTerminate);
-
-        }
+//        if (this->timeTerminate == DEFAULT_TIME_TERMINATE) {
+//            const char *format = "PID: 0x%04lx  PC: 0x%05lx  State: %s  Priority: 0x%x  Intensity: %s  Type: %s  Group: %lu2  %s Created: 0x%05lx";
+//            snprintf(str, (size_t) PCB_TOSTRING_LEN - 1, format, this->pid,
+//                     this->regs->reg.pc,
+//                     STATE[this->state], this->orig_priority,
+//                     this->io ? "IO" : "CPU", TYPE[this->type], this->group,
+//                     Reg_File_toString(this->regs, regString, ptr_error),
+//                     this->timeCreate);
+//
+//
+//        } else {
+        const char *format = "PID: 0x%08lx  PC: 0x%05lx  State: %s  Priority: 0x%x  Intensity: %s  Type: %s  Group: %2lu  %s Created: 0x%05lx Ended: 0x%05lx";
+        snprintf(str, (size_t) PCB_TOSTRING_LEN - 1, format, this->pid,
+                 this->regs->reg.pc,
+                 STATE[this->state], this->orig_priority,
+                 this->io ? "IO " : "CPU", TYPE[this->type], this->group,
+                 Reg_File_toString(this->regs, regString, ptr_error),
+                 this->timeCreate, this->timeTerminate);
 
     }
+
+    
 
     if (ptr_error != NULL) {
         *ptr_error += error;
