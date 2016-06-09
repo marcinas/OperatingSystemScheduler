@@ -34,7 +34,7 @@
 #define THREAD_EMPTY_MESSAGE true
 #define ERROR_MESSAGE false
 #define HELP_CHRIS_UNDERSTAND_WHAT_PC_VALUE_IS false
-#define MAX_FIELD_WIDTH 216
+#define MAX_FIELD_WIDTH 204
 #define OUTPUT true
 #define OUTPUT_CONTEXT_SWITCH 1
 #define FIRST_IO 1
