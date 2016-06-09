@@ -45,10 +45,6 @@ a PCB that will be checked for starvation:
    threshold (e.g. 3) then the next time the daemon is called it will
    be put back into it's original priority queue. 
 
-    
-Run Data Report
-RUN#    deadlocks   totalPCB'sCreated      terminatedPCB's     waitingLock
-
 
 
      
