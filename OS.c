@@ -860,7 +860,7 @@ void scheduler(int *error) {
                 && (group[i]->fmutex[0]->head->data->type == mutual_A || group[i]->fmutex[0]->head->data->type == mutual_B)
                 && (group[i]->fmutex[1]->head->data->type == mutual_A || group[i]->fmutex[1]->head->data->type == mutual_B)
                 && (group[i]->fmutex[0]->head->data !=  group[i]->fmutex[1]->head->data)
-               ) printf("Deadlock Detected: PID: 0x%05lu and PID: 0x%05lu are deadlocked\n",group[i]->fmutex[0]->head->data->pid, group[i]->fmutex[1]->head->data->pid);
+               ) printf(">Deadlock Detected:    PID: 0x%05lu and PID: 0x%05lu are deadlocked\n",group[i]->fmutex[0]->head->data->pid, group[i]->fmutex[1]->head->data->pid);
     }
 
     for (r = 0; r < PRIORITIES_TOTAL; r++) if (!FIFOq_is_empty(readyQ[r], error)) break;
@@ -880,29 +880,20 @@ void scheduler(int *error) {
     dispatcher(error);
 
     if (OUTPUT) {
+        
         char runstr[PCB_TOSTRING_LEN];
         char rdqstr[PCB_TOSTRING_LEN];
         printf(">Now running:          %s\n", PCB_toString(current, runstr, error));
         if (!pcb_idl && !pcb_term && !pcb_io)
-            if (readyQ[r]->size > 1)
-                printf(">Requeued readyQ:      %s\n",
-                       PCB_toString(readyQ[r]->tail->data, rdqstr, error));
-            else
-                printf(">No process return required.\n");
-        else if (pcb_idl)
-            printf(">Idle process:         %s\n", PCB_toString(idl, rdqstr, error));
-        else if (pcb_term)
-            printf(">Exited system:        %s\n",
-                   PCB_toString(terminateQ->tail->data, rdqstr, error));
-        else if (pcb_io)
-            printf(">Requested I/O:        %s\n", PCB_toString(pcb, rdqstr, error));
-        else if (pcb_mtx)
-            printf(">Mutex lock/wait:      %s\n", PCB_toString(pcb, rdqstr, error));
+            if (readyQ[r]->size > 1) printf(">Requeued readyQ:      %s\n", PCB_toString(readyQ[r]->tail->data, rdqstr, error));
+            else printf(">No process return required.\n");
+        else if (pcb_idl) printf(">Idle process:         %s\n", PCB_toString(idl, rdqstr, error));
+        else if (pcb_term) printf(">Exited system:        %s\n", PCB_toString(terminateQ->tail->data, rdqstr, error));
+        else if (pcb_io) printf(">Requested I/O:        %s\n", PCB_toString(pcb, rdqstr, error));
+        else if (pcb_mtx) printf(">Mutex lock/wait:      %s\n", PCB_toString(pcb, rdqstr, error));
         int stz = FIFOQ_TOSTRING_MAX;
         char str[stz];
-        if (OUTPUT)
-            printf(">Priority %d %s\n", r,
-                   FIFOq_toString(readyQ[r], str, &stz, error));
+        if (OUTPUT) printf(">Priority %d %s\n", r, FIFOq_toString(readyQ[r], str, &stz, error));
 
     }
 
