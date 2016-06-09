@@ -1,14 +1,28 @@
-/*
+/**
  * Final Project - Operating System
  * TCSS 422 A Spring 2016
- * Mark Peters, Luis Solis-Bruno
+ * Mark Peters and Luis Solis-Bruno, who stayed up all night, when they should have
+ *                                  been studying for finals before and enjoying themselves
+ *                                  afterwards, because the other group members
+ *                                  waited until two fucking days before due date
+ *                                  (the code we wrote was finished weeks ago)
+ *                                  to turn in their buggy, unusable code that had
+ *                                  to be completely thrown away and redone into
+ *                                  the fleeting moments in dark.
  * 
- * And these folks (at least they tried... kind of):
- * Chris Ottersen:  Submitted buggy code at the very last minute. "Guys, I promise I'll get it in time!" Spent most of his time formatting brackets.
- * Daniel Bayless:  Submitted about 20 lines about two hours ago. We threw it away because it sucked.
- * Bun Kak       :  Didn't do shit. "Oh I'm graduating and I don't need to do any work"
+ * Chris Ottersen:  At least he tried, unlike the other two. Submitted buggy code on Sunday, but forgot to upload half of it. Submitted the rest and kind of fixed it over the next couple days. "Guys, I promise I'll get it in time!" Spent most of his time formatting brackets.
+ *
+ * 
+ * And these folks (at least they tried... kind of): 
+ * Daniel Bayless:  Submitted about 20 lines about two hours after the final. Through email instead of the Github we use. We threw it away because it didn't compile even with half of it commented out.
+ * Bun Kak       :  Didn't do shit. "Oh I'm graduating and I don't need to do any work, hehe."
  */
 
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <limits.h>
+#include <time.h>
 #include "OS.h"
 
 /*global declarations for system stack*/
@@ -1273,19 +1287,18 @@ void cleanup(int *error) {
         
     }
 
-    for (t = 1; t <= MAX_SHARED_RESOURCES; t++) {
+    for (t = 1; t <= MAX_SHARED_RESOURCES; t++) { //I'm Daniel and I deleted this section for no reason
         
         if (group[t] != empty) {
             //deallocation
             for (r = 0; r < MUTUAL_MAX_RESOURCES; r++) {
+                
                 char mQ[24] = "group_yy mutexQ_x";
                 mQ[6] = (t/10) + '0';
                 mQ[7] = (t%10) + '0';
                 mQ[16] = r + '0';
-                if (!FIFOq_is_empty(group[t]->fmutex[r], error))
-                    queueCleanup(group[t]->fmutex[r], mQ, error);
-                else
-                    FIFOq_destruct(group[t]->fmutex[r], error);
+                if (!FIFOq_is_empty(group[t]->fmutex[r], error)) queueCleanup(group[t]->fmutex[r], mQ, error);
+                else FIFOq_destruct(group[t]->fmutex[r], error);
                 
                 char cQ[24] = "group_yy condQ_x";
                 cQ[6] = (t/10) + '0';
@@ -1395,6 +1408,14 @@ void nanosleeptest() {
         printf("%d nanoseconds have passes", i);
         i++;
     }
+}
+
+/**
+ * Codes a program just like Bun does!
+ * @return nothing.
+ */
+void *codeLikeBun() {
+
 }
 
 

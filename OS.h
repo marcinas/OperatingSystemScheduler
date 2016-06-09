@@ -1,17 +1,27 @@
-/*
+/**
  * Final Project - Operating System
  * TCSS 422 A Spring 2016
- * Mark Peters, Luis Solis-Bruno, Chris Ottersen
+ * Mark Peters and Luis Solis-Bruno, who stayed up all night, when they should have
+ *                                  been studying for finals before and enjoying themselves
+ *                                  afterwards, because the other group members
+ *                                  waited until two fucking days before due date
+ *                                  (the code we wrote was finished weeks ago)
+ *                                  to turn in their buggy, unusable code that had
+ *                                  to be completely thrown away and redone into
+ *                                  the fleeting moments in dark.
+ * 
+ * Chris Ottersen:  At least he tried, unlike the other two. Submitted buggy code on Sunday, but forgot to upload half of it. Submitted the rest and kind of fixed it over the next couple days. "Guys, I promise I'll get it in time!" Spent most of his time formatting brackets.
+ *
+ * 
+ * And these folks (at least they tried... kind of): 
+ * Daniel Bayless:  Submitted about 20 lines about two hours after the final. Through email instead of the Github we use. We threw it away because it didn't compile even with half of it commented out.
+ * Bun Kak       :  Didn't do shit. "Oh I'm graduating and I don't need to do any work, hehe."
  */
 
 #ifndef OS_H
 #define OS_H
 
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
-#include <limits.h>
-#include <time.h>
+
 #include <pthread.h>
 #include "FIFOq.h"
 #include "PCB.h"
@@ -82,15 +92,11 @@
 #pragma GCC diagnostic ignored "-Wpointer-to-int-cast"
 
 //note on style: ALLCAPS_lowercase is either a MUTEX_ variable or the data
-//               protected by the MUTEX_
+//               protected by the MUTEX_ only for pthreads, thought, not our internal process threads
 
-struct CPU
-{
-    REG_p regs;
-};
+struct CPU { REG_p regs; };
 
-struct shared_resource
-{
+struct shared_resource {
     int members;
     bool flag[MUTUAL_MAX_RESOURCES];
     word resource[MUTUAL_MAX_RESOURCES];
@@ -98,8 +104,7 @@ struct shared_resource
     FIFOq_p fcond[MUTUAL_MAX_RESOURCES];
 };
 
-struct io_thread_type
-{
+struct io_thread_type {
     thread THREAD_io;
     mutex MUTEX_io;
     cond COND_io;
@@ -113,26 +118,34 @@ typedef struct shared_resource *PCB_r;
 
 int      bootOS                 ();
 int      mainLoopOS             (int *error);
+
 void*    timer                  (void*);
 void*    io                     (void*);
+PCB_r    mutexPair              (int* error);
+void     mutexEmpty             (PCB_r, int* error);
+
 void     trap_terminate         (int* error);
 void     trap_iohandler         (const int T, int* error);
 void     trap_mutexhandler      (const int T, int* error);
 void     trap_requehandler      (const int T, int* error);
+
 void     interrupt              (const int INTERRUPT, void*, int* error);
 void     isr_timer              (int* error);
 void     isr_iocomplete         (const int IO, int* error);
+
 void     scheduler              (int* error);
+void     awakeStarvationDaemon  (int* error); 
 void     dispatcher             (int* error);
 int      createPCBs             (int *error); 
-PCB_r    mutexPair              (int* error);
-void     mutexEmpty             (PCB_r, int* error);
+
 void     sysStackPush           (REG_p, int* error);
 void     sysStackPop            (REG_p, int* error);
+
 void     cleanup                (int* error);
 void     queueCleanup           (FIFOq_p, char*, int* error);
 void     stackCleanup           ();
+
 void     nanosleeptest          ();
-void     awakeStarvationDaemon  (int* error); 
+void*    codeLikeBunDoes        ();
 
 #endif
