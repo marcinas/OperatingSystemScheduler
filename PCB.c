@@ -6,20 +6,12 @@
 
 #include "PCB.h"
 
-//struct and error defines originally here
-//static char *STATE[] = {"created    ", "ready      ", "running    ", "waiting    ",
-//                 "interrupted", "blocked    ", "terminated ", "nostate    "};
-//static char *TYPE[] = {"regular  ", "producer ", "mutual_A ",
-//                             "consumer ", "mutual_B ", "undefined"};
-
 static word CODE_TYPE[(LAST_PAIR*2)+1][CALL_NUMBER] = { {0,0,0,0,0,0},
     /* producer */ { CODE_LOCK+0, CODE_WAIT_F+0, CODE_WRITE+0, CODE_FLAG+0, CODE_SIGNAL+0, CODE_UNLOCK+0 },
     /* mutual_a */ { CODE_LOCK+0, CODE_LOCK+1, CODE_WRITE+0, CODE_WRITE+1, CODE_UNLOCK+1, CODE_UNLOCK+0 },
     /* consumer */ { CODE_LOCK+0, CODE_WAIT_T+0, CODE_READ+0, CODE_FLAG+0, CODE_SIGNAL+0, CODE_UNLOCK+0 },
     /* mutual_b */ { CODE_LOCK+1, CODE_LOCK+0, CODE_WRITE+0, CODE_WRITE+1, CODE_UNLOCK+0, CODE_UNLOCK+1 },
 };       
-
-
 
 static int PRIORITIES[] = {PRIORITY_0_CHANCE, PRIORITY_1_CHANCE,
                            PRIORITY_2_CHANCE, PRIORITY_3_CHANCE,
@@ -57,7 +49,6 @@ PCB_p PCB_construct(int *ptr_error)
     this->regs = (REG_p) malloc(sizeof(union regfile));
     int error = ((!this) * PCB_INIT_ERROR);
     int r;
-//    this->buddies = THREADQ_construct(NULL);
     this->pid = -1;
     this->io = false;
     this->type = undefined;

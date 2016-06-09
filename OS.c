@@ -49,19 +49,22 @@ int main(int argc, char* argv[]) {
 
     uint64_t s = clock();
     int run, d, n;
+    char* filename;
+    bool out = false;
     word errors[SYSTEM_RUNS] = {0};
 
     if (SYSTEM_RUNS < 1) printf("NO SYSTEM RUN SET\n");
 
+    if (WRITE_TO_FILE || argc-1) { filename = (argc-1) ? argv[1] : DEFAULT_TRACE; out = true; }
+    
     for (run = 1; run <= SYSTEM_RUNS; run++) {
 
+        if (out) freopen(0, "w", stdout);
         if (EXIT_STATUS_MESSAGE) printf("\nSYSTEM START RUN %d of %d\n\n", run, SYSTEM_RUNS);
+        if (out) freopen(filename, "w", stdout);
+        
+        
         if (DEBUG) printf("Main begin\n");
-
-        if (WRITE_TO_FILE || argc-1)
-            if (argc-1) freopen(argv[1], "w", stdout);
-            else freopen(DEFAULT_TRACE, "w", stdout);
-
         int base_error = bootOS();
         if (DEBUG) printf("OS booted\n");
 
@@ -82,7 +85,11 @@ int main(int argc, char* argv[]) {
 
         if (OUTPUT) printf(">Execution ended in %.3lf seconds.\n\n", (clock() - s) * 1.0 / CLOCKS_PER_SEC);
         errors[run - 1] = base_error;
+        
+        if (out) freopen(0, "w", stdout);
         if (EXIT_STATUS_MESSAGE) printf("\nSYSTEM END RUN %d of %d\n\n", run, SYSTEM_RUNS);
+        if (out) freopen(filename, "w", stdout);
+        
         if (EXIT_STATUS_MESSAGE) for (d = 0; d < 4; d++) { for (n = 0; n < MAX_FIELD_WIDTH; n++) printf("-"); printf("\n"); }
     }
 
@@ -544,7 +551,9 @@ void *io(void *tid) {
         shutoff = IO[t]->SHUTOFF_io;
         empty = FIFOq_is_empty(IO[t]->waitingQ, &io_error);
         pthread_mutex_unlock(&(IO[t]->MUTEX_io));
+        
         while (!empty && !shutoff) {
+            
             if (THREAD_DEBUG) printf("\t\tIO %d: queue has %d PCBs left; beginning IO ops\n", t + FIRST_IO, IO[t]->waitingQ->size);
             word sleep = rand() % (IO_MAX_SLEEP - IO_MIN_SLEEP) + IO_MIN_SLEEP;
             for (c = 0; c < sleep; c++); //sleeping simulation
@@ -903,51 +912,36 @@ void scheduler(int *error) {
 /**
  * Checks if any pcb's in the waiting queue need to be promoted due to starvation or
  * demoted due to being promoted and recieving enough attention.
+ * 
  * @param error - error collects all the error signals.
  */
-void awakeStarvationDaemon(int *error)
-{
+void awakeStarvationDaemon(int *error) {
 
-    if (DEBUG)
-        puts(
-            "~?~?~?~?~?~?~?~?~?~?~?~?~?~?~?~?~?~?~?~?~?~?~?~?~?~?~?~?~?~?~?~?~?~?~?");
-    if (DEBUG)
-        puts("Starvation Daemon");
+    if (DEBUG) printf( "~?~?~?~?~?~?~?~?~?~?~?~?~?~?~?~?~?~?~?~?~?~?~?~?~?~?~?~?~?~?~?~?~?~?~?");
+    if (DEBUG) printf("Starvation Daemon");
     int rank;
     for (rank = 0; rank < PRIORITIES_TOTAL; rank++) {
         Node_p curr = readyQ[rank]->head;
         Node_p prev = curr;
         Node_p next;
         while (curr != NULL) {
-            if (DEBUG)
-                printf(">PID of inspect: %lu while Rank: %d PCB rank: "
-                           "%hu, attentionRecieved: %lu\n",
-                       curr->data->pid, rank, curr->data->priority,
-                       curr->data->attentionCount);
-            if (DEBUG)
+            if (DEBUG) {
+                printf(">PID of inspect: %lu while Rank: %d PCB rank: %hu, attentionRecieved: %lu\n", curr->data->pid, rank, curr->data->priority, curr->data->attentionCount);
                 printf("Wait time: %lu\n", (clock_ - curr->data->lastClock));
+            }
             //if current received enough attention then remove, demote and set current to next
             if (curr->data->attentionCount >= PROMOTION_ALLOWANCE) {
-                if (DEBUG)
-                    puts("Demoting a process");
-                if (DEBUG)
-                    printf(">Demoted PID: %lu while Rank: %d PCB rank:"
-                               " %hu attentionRecieved: %lu\n",
-                           curr->data->pid, rank, curr->data->priority,
-                           curr->data->attentionCount);
+                if (DEBUG) printf("Demoting a process");
+                if (DEBUG) printf(">Demoted PID: %lu while Rank: %d PCB rank: %hu attentionRecieved: %lu\n", curr->data->pid, rank, curr->data->priority, curr->data->attentionCount);
                 next = FIFOq_remove_and_return_next(curr, prev, readyQ[rank]);
                 curr->data->attentionCount = 0;
                 curr->data->promoted = false;
                 curr->data->priority = curr->data->orig_priority;
                 FIFOq_enqueue(readyQ[curr->data->priority], curr, error);
                 char pcbstr[PCB_TOSTRING_LEN];
-                if (OUTPUT)
-                    printf(">Demoted:              %s\n",
-                           PCB_toString(curr->data, pcbstr, error));
+                if (OUTPUT) printf(">Demoted:              %s\n", PCB_toString(curr->data, pcbstr, error));
                 curr = next;
-                if (curr == readyQ[rank]->head) {
-                    prev = curr;
-                }
+                if (curr == readyQ[rank]->head) prev = curr;
             } else if (rank > 0 && (clock_ - curr->data->lastClock) >
                                    STARVATION_CLOCK_LIMIT) {
                 //remove current, promote current process, set current to next
