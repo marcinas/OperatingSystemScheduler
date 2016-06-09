@@ -16,7 +16,7 @@
 #include <stdbool.h>
 //#include "fthread.h"
 
-#define DEADLOCK false
+#define DEADLOCK true
 
 #define created created_
 

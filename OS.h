@@ -22,6 +22,8 @@
 #define cond pthread_cond_t
 
 //OUTPUT SETTINGS
+#define WRITE_TO_FILE false
+#define DEFAULT_TRACE "scheduleTrace.txt"
 #define DEBUG false
 #define THREAD_DEBUG false
 #define STACK_DEBUG false
@@ -29,6 +31,9 @@
 #define MUTEX_DEBUG false
 #define EXIT_STATUS_MESSAGE true
 #define CLEANUP_MESSAGE false
+#define ERROR_MESSAGE false
+#define HELP_CHRIS_UNDERSTAND_WHAT_PC_VALUE_IS false
+#define MAX_FIELD_WIDTH 216
 #define OUTPUT true
 #define OUTPUT_CONTEXT_SWITCH 1
 #define FIRST_IO 1
@@ -55,7 +60,7 @@
 #define INTERRUPT_IOCOMPLETE 4444
 
 //SYSTEM DETAILS
-#define SHUTDOWN 100000
+#define SHUTDOWN 500000
 #define TIME_QUANTUM 300
 #define TIMER_SLEEP (TIME_QUANTUM * 1000)
 #define IO_MAX_SLEEP (TIME_QUANTUM * 2000)
@@ -71,6 +76,9 @@
 #define CPU_STACK_ERROR 73
 #define OS_UNKOWN_INTERRUPT_ERROR 79
 
+//PRAGMAS
+#pragma GCC diagnostic ignored "-Wint-to-pointer-cast"
+#pragma GCC diagnostic ignored "-Wpointer-to-int-cast"
 
 //note on style: ALLCAPS_lowercase is either a MUTEX_ variable or the data
 //               protected by the MUTEX_
@@ -102,33 +110,28 @@ struct io_thread_type
 typedef struct io_thread_type *io_thread;
 typedef struct shared_resource *PCB_r;
 
-//extern word SsyStack[SYSSIZE];
-//extern int SysPointer;
-
-int      bootOS          ();
-int      mainLoopOS      (int *error);
-void*    timer           (void*);
-void*    io              (void*);
-void     trap_terminate  (int* error);
-void     trap_iohandler  (const int T, int* error);
-void     trap_mutexhandler(const int T, int* error);
-void     trap_requehandler(const int T, int* error);
-void     interrupt       (const int INTERRUPT, void*, int* error);
-void     isr_timer       (int* error);
-void     isr_iocomplete  (const int IO, int* error);
-void     scheduler       (int* error);
-void     dispatcher      (int* error);
-int      createPCBs  	 (int *error); 
-PCB_r    mutexPair       (int* error);
-void     mutexEmpty      (PCB_r, int* error);
-void      sysStackPush    (REG_p, int* error);
-void      sysStackPop     (REG_p, int* error);
-void     cleanup         (int* error);
-void     queueCleanup    (FIFOq_p, char*, int* error);
-void     stackCleanup    ();
-void     nanosleeptest   ();
-void awakeStarvationDaemon(int* error); 
-
-//static void     run             (word *pc, int *error);
+int      bootOS                 ();
+int      mainLoopOS             (int *error);
+void*    timer                  (void*);
+void*    io                     (void*);
+void     trap_terminate         (int* error);
+void     trap_iohandler         (const int T, int* error);
+void     trap_mutexhandler      (const int T, int* error);
+void     trap_requehandler      (const int T, int* error);
+void     interrupt              (const int INTERRUPT, void*, int* error);
+void     isr_timer              (int* error);
+void     isr_iocomplete         (const int IO, int* error);
+void     scheduler              (int* error);
+void     dispatcher             (int* error);
+int      createPCBs             (int *error); 
+PCB_r    mutexPair              (int* error);
+void     mutexEmpty             (PCB_r, int* error);
+void     sysStackPush           (REG_p, int* error);
+void     sysStackPop            (REG_p, int* error);
+void     cleanup                (int* error);
+void     queueCleanup           (FIFOq_p, char*, int* error);
+void     stackCleanup           ();
+void     nanosleeptest          ();
+void     awakeStarvationDaemon  (int* error); 
 
 #endif
