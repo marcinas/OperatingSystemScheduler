@@ -216,7 +216,7 @@ int PCB_init(PCB_p this)
         int c;
         if (this->type != regular && this->type <= LAST_PAIR * 2)
             for (c = 0; c < CALL_NUMBER; c++)
-                this->regs->reg.CODES[c] = CODE_TYPE[this->type][c];
+                this->regs->reg.CODES[c] = CODE_TYPE[(this->type == mutual_B && !DEADLOCK)? mutual_A : this->type][c];
         
         if (PCB_DEBUG) {
             int t;

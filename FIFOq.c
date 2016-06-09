@@ -78,10 +78,8 @@ int FIFOq_is_empty(FIFOq_p this, int *error)
 
 PCB_p FIFOq_peek(FIFOq_p this, int *error)
 {
-    if (this == NULL) {
+    if (this == NULL)
         *error += 800000000;
-        printf("You fucked it up\n");
-    }
     if (FIFOq_is_empty(this, error))
         return NULL;
     return this->head->data;
@@ -115,6 +113,7 @@ void FIFOq_enqueue(FIFOq_p this, Node_p next, int *error)
             }
             this->tail->next_node = next;
             this->tail = next;
+//            this->tail->next_node = this->head;
         }
         this->size++;
     }

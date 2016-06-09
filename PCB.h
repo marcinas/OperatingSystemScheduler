@@ -16,9 +16,8 @@
 #include <stdbool.h>
 //#include "fthread.h"
 
-/* DOESN'T DISPLAY WARNINGS THAT ARE DUE TO ULONG WORD CAST */
-//words are ulongs, silly
-//#pragma GCC diagnostic ignored "-Wformat="
+#define DEADLOCK false
+
 #define created created_
 
 #define max(x, y) (  ((x) > (y)) ? (x) : (y)  )
@@ -51,7 +50,7 @@
 #define IO_ONLY_MAX 50
 #define PROCON_PAIR_MAX 10   //x2; pair count
 #define MUTUAL_PAIR_MAX 10   //x2; pair count
-#define MAX_SHARED_RESOURCES (PROCON_PAIR_MAX + MUTUAL_PAIR_MAX)
+#define MAX_SHARED_RESOURCES (PROCON_PAIR_MAX + MUTUAL_PAIR_MAX) * 2
 #define MUTUAL_MAX_RESOURCES 2
 
 #define DEFAULT_STATE created
