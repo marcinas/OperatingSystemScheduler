@@ -71,13 +71,13 @@ int main(int argc, char* argv[]) {
         stackCleanup();
 
         if (base_error) {
-            if (EXIT_STATUS_MESSAGE || OUTPUT) printf("\n>System exited with error %d\n", base_error);
+            if (ERROR_MESSAGE || OUTPUT) printf("\n>System exited with error %d\n", base_error);
         } else {
             if (EXIT_STATUS_MESSAGE) printf("\n>System exited without incident\n");
             if (OUTPUT)
                 if (EXIT_ON_MAX_PROCESSES && exit == -2) printf("\n>%d processes have been created so system has exited\n", MAX_PROCESSES);
                 else if (SHUTDOWN && exit == -SHUTDOWN) printf("\n>%d cycles have run so system has exited\n", SHUTDOWN);
-                else printf("\n>Of %d processes created, all terminable ones have terminated so system has exited\n", MAX_PROCESSES);
+                else if (EXIT_STATUS_MESSAGE) printf("\n>Of %d processes created, all terminable ones have terminated so system has exited\n", MAX_PROCESSES);
         }
 
         if (OUTPUT) printf(">Execution ended in %.3lf seconds.\n\n", (clock() - s) * 1.0 / CLOCKS_PER_SEC);
@@ -802,15 +802,17 @@ void isr_iocomplete(const int t, int *error) {
 /************************** SCHEDULERS/LOADERS ********************************/
 /******************************************************************************/
 
-/* Always schedules any newly created PCBs into the ready queue, then checks
- * the interrupt type: if the interrupt is a timer interrupt, requeues the
- * currently running process in the ready queue and sets its state to ready.
- * Then calls the dispatcher.
+/** Always schedules any newly created PCBs into the ready queue, then checks
+ * the interrupt type: depending on the setup of the current PCB, requeues the
+ * currently running process in the ready queue and sets its state to ready;
+ * if there is a need to, chooses another process to run. Then calls dispatcher.
+ * 
+ * @param error is the error.
  */
-void scheduler(int *error)
-{
-    static int schedules = 0;
-
+void scheduler(int *error) {
+    
+    static int schedules = 0; //for starvation and deadlock checking
+    int r;
     PCB_p temp;
     PCB_p pcb = current;
     bool pcb_idl = current == idl;
@@ -818,15 +820,9 @@ void scheduler(int *error)
     bool pcb_io = current->state == waiting;
     bool pcb_mtx = current->state == blocked;
 
-    if (createQ == NULL) {
+    if (createQ == NULL || readyQ == NULL) {
         *error += FIFO_NULL_ERROR;
-        puts("ERROR: createQ is null");
-        return;
-    }
-
-    if (readyQ == NULL) {
-        *error += FIFO_NULL_ERROR;
-        puts("ERROR: readyQ is null");
+        if (ERROR_MESSAGE) printf("ERROR: FIFOQ is null");
         return;
     }
 
@@ -842,68 +838,51 @@ void scheduler(int *error)
         }
     }
 
-    if (DEBUG)
-        printf("createQ transferred to readyQ\n");
+    if (DEBUG) printf("createQ transferred to readyQ\n");
 
-    int r;
-    for (r = 0; r < PRIORITIES_TOTAL; r++)
-        if (!FIFOq_is_empty(readyQ[r], error))
-            break;
+    for (r = 0; r < PRIORITIES_TOTAL; r++) if (!FIFOq_is_empty(readyQ[r], error)) break;
 
-    if (r == PRIORITIES_TOTAL) {// || current->pid == readyQ[r]->head->data->pid) { //nothing in any ready queues //changed
-        if (pcb_term || pcb_io || pcb_mtx)
-            current = idl;
+    if (r == PRIORITIES_TOTAL) { //nothing in any ready queues //changed
+        if (pcb_term || pcb_io || pcb_mtx) current = idl;
         PCB_setState(current, running);
         sysStackPush(current->regs, error);
         return;
     }
 
     schedules++;
-    if (!(schedules % STARVATION_CHECK_FREQUENCY)) {
-        awakeStarvationDaemon(error);
-    }
+    if (!(schedules % STARVATION_CHECK_FREQUENCY)) awakeStarvationDaemon(error);
+    
     if (!(schedules % (STARVATION_CHECK_FREQUENCY + 10))) {
         int i = 0;
-        for(i = 0; i < MAX_SHARED_RESOURCES + 1; i++){
+        for(i = 0; i < MAX_SHARED_RESOURCES + 1; i++)
             if (group[i]->fmutex[0]->head != NULL
                 && group[i]->fmutex[1]->head !=NULL
                 && (group[i]->fmutex[0]->head->data->type == mutual_A || group[i]->fmutex[0]->head->data->type == mutual_B)
                 && (group[i]->fmutex[1]->head->data->type == mutual_A || group[i]->fmutex[1]->head->data->type == mutual_B)
                 && (group[i]->fmutex[0]->head->data !=  group[i]->fmutex[1]->head->data)
-               ){
-                printf("Deadlock Detected: PID: 0x%05lu and PID: 0x%05lu are deadlocked\n",group[i]->fmutex[0]->head->data->pid, group[i]->fmutex[1]->head->data->pid);
-            }
-        }
+               ) printf("Deadlock Detected: PID: 0x%05lu and PID: 0x%05lu are deadlocked\n",group[i]->fmutex[0]->head->data->pid, group[i]->fmutex[1]->head->data->pid);
     }
 
-
-    for (r = 0; r < PRIORITIES_TOTAL; r++)
-        if (!FIFOq_is_empty(readyQ[r], error))
-            break;
+    for (r = 0; r < PRIORITIES_TOTAL; r++) if (!FIFOq_is_empty(readyQ[r], error)) break;
 
     if (OUTPUT) {
-        char pcbstr[PCB_TOSTRING_LEN];
-        printf(">PCB:                  %s\n", PCB_toString(current, pcbstr, error));
-        char rdqstr[PCB_TOSTRING_LEN];
-        printf(">Switching to:         %s\n",
-               PCB_toString(readyQ[r]->head->data, rdqstr, error));
+        char pcbstr[PCB_TOSTRING_LEN]; printf(">PCB:                  %s\n", PCB_toString(current, pcbstr, error));
+        char rdqstr[PCB_TOSTRING_LEN]; printf(">Switching to:         %s\n", PCB_toString(readyQ[r]->head->data, rdqstr, error));
     }
+    
     //if it's a timer interrupt
     if (!pcb_idl && !pcb_term && !pcb_io && !pcb_mtx) {
         current->state = ready;
         current->lastClock = clock_;
-        if (current->promoted) {
-            current->attentionCount++;
-        }
+        if (current->promoted) current->attentionCount++;
         FIFOq_enqueuePCB(readyQ[current->priority], current, error);
-    } else
-        idl->state = waiting;
+    } else idl->state = waiting;
     dispatcher(error);
 
     if (OUTPUT) {
         char runstr[PCB_TOSTRING_LEN];
-        printf(">Now running:          %s\n", PCB_toString(current, runstr, error));
         char rdqstr[PCB_TOSTRING_LEN];
+        printf(">Now running:          %s\n", PCB_toString(current, runstr, error));
         if (!pcb_idl && !pcb_term && !pcb_io)
             if (readyQ[r]->size > 1)
                 printf(">Requeued readyQ:      %s\n",
@@ -1385,33 +1364,30 @@ void queueCleanup(FIFOq_p queue, char *qstr, int *error)
 {
     int stz = FIFOQ_TOSTRING_MAX;
     char str[stz];
+    bool printQueue = (qstr[0] == 'g') ? THREAD_EMPTY_MESSAGE : CLEANUP_MESSAGE;
 
-    if (CLEANUP_MESSAGE) {
+    if (printQueue) {
         printf("\n>%s deallocating...\n", qstr);
         printf(">FIFO Queue %s", FIFOq_toString(queue, str, &stz, error));
     }
 
     if (queue->size) {
         if (DEBUG) printf("size: %d\n", queue->size);
-        if (CLEANUP_MESSAGE) {
-            printf(">System exited with non-empty %s\n", qstr);
-        }
+        if (CLEANUP_MESSAGE) printf(">System exited with non-empty %s\n", qstr);
         while (!FIFOq_is_empty(queue, error)) {
             PCB_p pcb = FIFOq_dequeue(queue, error);
             
             if (pcb != idl) {
                 char pcbstr[PCB_TOSTRING_LEN];
-                if (CLEANUP_MESSAGE)
-                    printf("\t\t       %s\n", PCB_toString(pcb, pcbstr, error));
+                if (printQueue) printf("\t\t       %s\n", PCB_toString(pcb, pcbstr, error));
                 if (pcb->queues == 0) PCB_destruct(pcb);
 
-            } else
-                puts("IDL!!!!!!!!!");
-
+            } else if (DEBUG) printf("IDL!!!!!!!!!");
         }
-    } else if (CLEANUP_MESSAGE)
-        printf(" empty\n");
+        
+    } else if (printQueue)  printf(" empty\n");
     FIFOq_destruct(queue, error);
+    
 }
 
 /* Deallocates the stack data structure on the C simulator running this program
