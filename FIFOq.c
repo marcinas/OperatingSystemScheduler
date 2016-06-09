@@ -115,6 +115,7 @@ void FIFOq_enqueue(FIFOq_p this, Node_p next, int *error)
             }
             this->tail->next_node = next;
             this->tail = next;
+//            this->tail->next_node = this->head;
         }
         this->size++;
     }

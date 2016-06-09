@@ -297,7 +297,7 @@ int mainLoopOS(int *error)
                 bool showit = false;
                 int resource;
                 for (t = 0; t < CALL_NUMBER; t++)
-                    if (*pc == current->regs->reg.CALLS[t]) {
+                    if (*pc >= MIN_THREAD_CALL && *pc == current->regs->reg.CALLS[t]) {
                         showit = true;
                         word call = current->regs->reg.CODES[t] & -2; //truncates 1's place
                         resource = current->regs->reg.CODES[t] & 1; //1's place
@@ -743,7 +743,7 @@ void trap_requehandler(const int T, int *error)
     bool newlock = false;
     char pcbstr[PCB_TOSTRING_LEN];
     PCB_p pcb = NULL;
-    printf("t: %d\n", t);
+    if (MUTEX_DEBUG) printf("t: %d\n", t);
     if (t < 0) {
         t = -t - 1;
         
@@ -751,8 +751,8 @@ void trap_requehandler(const int T, int *error)
         if (FIFOq_peek(group[current->group]->fmutex[t], error) == current)
             FIFOq_dequeue(group[current->group]->fmutex[t], error);
         else *error += OS_MUTEX_ERROR;
-        if (!FIFOq_is_empty(group[current->group]->fcond[t], error) &&
-            FIFOq_peek(group[current->group]->fcond[t], error) != NULL)
+        if (!FIFOq_is_empty(group[current->group]->fmutex[t], error) &&
+            FIFOq_peek(group[current->group]->fmutex[t], error) != NULL)
             pcb = FIFOq_peek(group[current->group]->fmutex[t], error); 
         if ((OUTPUT || MUTEX_DEBUG))
             printf(">Unlocked lock %02lu-%d:   %s\n", current->group, t,
@@ -1084,6 +1084,17 @@ void awakeStarvationDaemon(int *error)
             }
         }
     }
+    int g, r;
+    PCB_p temp;
+    for (g = 1; g <= MAX_SHARED_RESOURCES; g++) {
+        for (r = 0; r < MUTUAL_MAX_RESOURCES; r++) {
+            temp = FIFOq_peek(group[g]->fmutex[r], error);
+            if (temp != NULL && temp != current && temp->state == blocked) {
+                temp->state = ready;
+                FIFOq_enqueuePCB(readyQ[temp->priority], temp, error);
+            }
+        }
+    }
     if (DEBUG)
         puts(
             "~?~?~?~?~?~?~?~?~?~?~?~?~?~?~?~?~?~?~?~?~?~?~?~?~?~?~?~?~?~?~?~?~?~?~?");
@@ -1367,8 +1378,8 @@ void cleanup(int *error)
 
 
     for (t = 0; t < IO_NUMBER; t++) {
-        char wQ[12] = "waitingQ_x";
-        wQ[9] = t + '0';
+        char wQ[14] = "IOwaitingQ_x";
+        wQ[11] = t + '0';
         pthread_cond_signal(&(IO[t]->COND_io));
 
         pthread_mutex_lock(&(IO[t]->MUTEX_io));
