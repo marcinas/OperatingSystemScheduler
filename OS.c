@@ -925,6 +925,20 @@ void scheduler(int *error)
     if (!(schedules % STARVATION_CHECK_FREQUENCY)) {
         awakeStarvationDaemon(error);
     }
+    if (!(schedules % (STARVATION_CHECK_FREQUENCY + 10))) {
+        int i = 0;
+        for(i = 0; i < MAX_SHARED_RESOURCES + 1; i++){
+            if (group[i]->fmutex[0]->head != NULL
+                && group[i]->fmutex[1]->head !=NULL
+                && (group[i]->fmutex[0]->head->data->type == mutual_A || group[i]->fmutex[0]->head->data->type == mutual_B)
+                && (group[i]->fmutex[1]->head->data->type == mutual_A || group[i]->fmutex[1]->head->data->type == mutual_B)
+               ){
+                puts("deadlock detected");
+                printf("%x and %x are deadlocked\n",group[i]->fmutex[0]->head->data->pid, group[i]->fmutex[1]->head->data->pid);
+            }
+        }
+    }
+
 
     for (r = 0; r < PRIORITIES_TOTAL; r++)
         if (!FIFOq_is_empty(readyQ[r], error))
