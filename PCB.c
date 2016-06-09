@@ -18,6 +18,13 @@
  * Bun Kak       :  Didn't do shit. "Oh I'm graduating and I don't need to do any work, hehe."
  */
 
+#include <stdlib.h>
+#include <stddef.h>
+#include <string.h>
+#include <stdio.h>
+#include <time.h>
+#include <limits.h>
+
 #include "PCB.h"
 
 static word CODE_TYPE[(LAST_PAIR*2)+1][CALL_NUMBER] = { {0,0,0,0,0,0},

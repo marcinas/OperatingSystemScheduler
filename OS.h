@@ -21,8 +21,6 @@
 #ifndef OS_H
 #define OS_H
 
-
-#include <pthread.h>
 #include "FIFOq.h"
 #include "PCB.h"
 

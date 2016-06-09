@@ -21,14 +21,7 @@
 #ifndef PCB_H
 #define PCB_H
 
-#include <stdlib.h>
-#include <stddef.h>
-#include <string.h>
-#include <stdio.h>
-#include <time.h>
-#include <limits.h>
 #include <stdbool.h>
-//#include "fthread.h"
 
 #define DEADLOCK true
 

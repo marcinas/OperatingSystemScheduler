@@ -21,6 +21,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <pthread.h>
 #include <limits.h>
 #include <time.h>
 #include "OS.h"
@@ -29,6 +30,7 @@
 static word SysStack[SYSSIZE];
 static int SysPointer;
 static int closeable;
+static int keyDeadCount = 0;
 
 /*timer fields*/
 static thread THREAD_timer;
@@ -70,10 +72,14 @@ int main(int argc, char* argv[]) {
     if (SYSTEM_RUNS < 1) printf("NO SYSTEM RUN SET\n");
 
     if (WRITE_TO_FILE || argc-1) { filename = (argc-1) ? argv[1] : DEFAULT_TRACE; out = true; }
+    if (WRITE_TO_FILE && argc <= 1) {
+        printf("OS uses command line arguments. Enter filename.txt after program call.\n");
+        printf("Using default file instead.\n");
+    }
     
     for (run = 1; run <= SYSTEM_RUNS; run++) {
 
-        if (out) freopen(0, "w", stdout);
+//        if (out) freopen(0, "w", stdout);
         if (EXIT_STATUS_MESSAGE) printf("\nSYSTEM START RUN %d of %d\n\n", run, SYSTEM_RUNS);
         if (out) freopen(filename, "w", stdout);
         
@@ -96,13 +102,15 @@ int main(int argc, char* argv[]) {
                 else if (SHUTDOWN && exit == -SHUTDOWN) printf("\n>%d cycles have run so system has exited\n", SHUTDOWN);
                 else if (EXIT_STATUS_MESSAGE) printf("\n>Of %d processes created, all terminable ones have terminated so system has exited\n", MAX_PROCESSES);
         }
-
+        
+        if (EXIT_STATUS_MESSAGE) printf("Deadlocks detected: %d\n", keyDeadCount);
+        
         if (OUTPUT) printf(">Execution ended in %.3lf seconds.\n\n", (clock() - s) * 1.0 / CLOCKS_PER_SEC);
         errors[run - 1] = base_error;
         
-        if (out) freopen(0, "w", stdout);
+//        if (out) freopen(0, "w", stdout);
         if (EXIT_STATUS_MESSAGE) printf("\nSYSTEM END RUN %d of %d\n\n", run, SYSTEM_RUNS);
-        if (out) freopen(filename, "w", stdout);
+//        if (out) freopen(filename, "w", stdout);
         
         if (EXIT_STATUS_MESSAGE) for (d = 0; d < 4; d++) { for (n = 0; n < MAX_FIELD_WIDTH; n++) printf("-"); printf("\n"); }
     }
@@ -933,7 +941,9 @@ void scheduler(int *error) {
                 && (group[i]->fmutex[0]->head->data->type == mutual_A || group[i]->fmutex[0]->head->data->type == mutual_B)
                 && (group[i]->fmutex[1]->head->data->type == mutual_A || group[i]->fmutex[1]->head->data->type == mutual_B)
                 && (group[i]->fmutex[0]->head->data !=  group[i]->fmutex[1]->head->data)
-               ) printf(">Deadlock Detected:    PID: 0x%05lu and PID: 0x%05lu are deadlocked\n",group[i]->fmutex[0]->head->data->pid, group[i]->fmutex[1]->head->data->pid);
+               ){ printf(">Deadlock Detected:    PID: 0x%05lu and PID: 0x%05lu are deadlocked\n",group[i]->fmutex[0]->head->data->pid, group[i]->fmutex[1]->head->data->pid);
+               keyDeadCount++;
+            }
     }
 
     for (r = 0; r < PRIORITIES_TOTAL; r++) if (!FIFOq_is_empty(readyQ[r], error)) break;
