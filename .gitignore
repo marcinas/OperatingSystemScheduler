@@ -6,7 +6,7 @@ CON
 ### output file ###
 *.txt
 !readme.txt
-
+!deadlockTrace.txt
 ### C++ ###
 # Compiled Object files
 *.slo
