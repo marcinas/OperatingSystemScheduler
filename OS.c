@@ -940,8 +940,7 @@ void scheduler(int *error)
                 && (group[i]->fmutex[1]->head->data->type == mutual_A || group[i]->fmutex[1]->head->data->type == mutual_B)
                 && (group[i]->fmutex[0]->head->data !=  group[i]->fmutex[1]->head->data)
                ){
-                puts("deadlock detected");
-                printf("%lu and %lu are deadlocked\n",group[i]->fmutex[0]->head->data->pid, group[i]->fmutex[1]->head->data->pid);
+                printf("Deadlock Detected: PID: 0x%05lu and PID: 0x%05lu are deadlocked\n",group[i]->fmutex[0]->head->data->pid, group[i]->fmutex[1]->head->data->pid);
             }
         }
     }
